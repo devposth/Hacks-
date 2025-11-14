@@ -8,6 +8,9 @@ class ApunteAI {
         this.startTime = null;
         this.timerInterval = null;
         this.isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        this.lastTouchTime = 0;
+        this.touchDelay = 300; // Prevenir múltiples toques rápidos
         
         this.initializeElements();
         this.setupEventListeners();
@@ -30,32 +33,76 @@ class ApunteAI {
         this.summaryContent = document.getElementById('summaryContent');
         this.summaryLoading = document.getElementById('summaryLoading');
         this.wordCount = document.getElementById('wordCount');
+        this.browserWarning = document.getElementById('browserWarning');
     }
 
     setupEventListeners() {
-        this.recordBtn.addEventListener('click', () => this.toggleRecording());
+        // Eventos para desktop y móvil
+        this.recordBtn.addEventListener('click', (e) => this.handleRecordClick(e));
+        this.recordBtn.addEventListener('touchend', (e) => this.handleRecordClick(e));
+        
         this.summarizeBtn.addEventListener('click', () => this.generateSummary());
         this.clearBtn.addEventListener('click', () => this.clearTranscription());
         this.exportBtn.addEventListener('click', () => this.exportText());
         this.copyBtn.addEventListener('click', () => this.copyText());
         
-        // Tecla espacio para grabar/pausar
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !e.target.matches('button, input, textarea')) {
-                e.preventDefault();
-                this.toggleRecording();
+        // Prevenir zoom en doble tap en botones
+        this.preventDoubleTapZoom([this.recordBtn, this.summarizeBtn, this.clearBtn, this.exportBtn, this.copyBtn]);
+        
+        // Tecla espacio para grabar/pausar (solo desktop)
+        if (!this.isMobile) {
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !e.target.matches('button, input, textarea')) {
+                    e.preventDefault();
+                    this.toggleRecording();
+                }
+            });
+        }
+
+        // Manejar visibilidad de la página para detener grabación cuando no está visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && this.isRecording) {
+                this.stopRecording();
             }
         });
+    }
+
+    preventDoubleTapZoom(elements) {
+        elements.forEach(element => {
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            });
+        });
+    }
+
+    handleRecordClick(e) {
+        if (this.isMobile) {
+            const currentTime = new Date().getTime();
+            if (currentTime - this.lastTouchTime < this.touchDelay) {
+                e.preventDefault();
+                return;
+            }
+            this.lastTouchTime = currentTime;
+        }
+        this.toggleRecording();
     }
 
     checkBrowserCompatibility() {
         if (!('webkitSpeechRecognition' in window)) {
             this.showError('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge para mejor compatibilidad.');
             this.recordBtn.disabled = true;
+            this.browserWarning.style.display = 'block';
+            this.browserWarning.textContent = '⚠️ Tu navegador no es compatible con el reconocimiento de voz. Por favor, usa Google Chrome.';
         }
         
         if (!this.isChrome) {
             this.showInfo('Para mejor experiencia, usa Google Chrome. Otros navegadores pueden tener funcionalidad limitada.');
+            this.browserWarning.style.display = 'block';
+            this.browserWarning.textContent = 'ℹ️ Para la mejor experiencia, recomendamos usar Google Chrome.';
+        }
+
+        if (this.isMobile) {
+            this.showInfo('Modo móvil activado. Asegúrate de permitir el acceso al micrófono.');
         }
     }
 
@@ -64,6 +111,12 @@ class ApunteAI {
         this.recognition.continuous = true;
         this.recognition.interimResults = true;
         this.recognition.lang = 'es-ES';
+        
+        // Configuraciones optimizadas para móvil
+        if (this.isMobile) {
+            this.recognition.continuous = false; // Mejor compatibilidad en móvil
+            this.recognition.interimResults = false;
+        }
 
         this.recognition.onstart = () => {
             this.isRecording = true;
@@ -79,16 +132,18 @@ class ApunteAI {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
                     finalTranscription += transcript + ' ';
-                } else {
+                } else if (!this.isMobile) {
+                    // Solo mostrar resultados intermedios en desktop
                     this.interimTranscription += transcript;
                 }
             }
 
             if (finalTranscription) {
                 this.transcription += finalTranscription;
+                this.updateTranscriptionDisplay();
+            } else if (this.interimTranscription && !this.isMobile) {
+                this.updateTranscriptionDisplay();
             }
-
-            this.updateTranscriptionDisplay();
         };
 
         this.recognition.onerror = (event) => {
@@ -97,6 +152,8 @@ class ApunteAI {
                 this.showError('Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.');
             } else if (event.error === 'network') {
                 this.showError('Error de red. Verifica tu conexión a internet.');
+            } else if (event.error === 'audio-capture') {
+                this.showError('No se detectó micrófono. Verifica tu dispositivo de audio.');
             }
             this.stopRecording();
         };
@@ -106,7 +163,12 @@ class ApunteAI {
                 // Reconexión automática si aún debería estar grabando
                 setTimeout(() => {
                     if (this.isRecording) {
-                        this.recognition.start();
+                        try {
+                            this.recognition.start();
+                        } catch (error) {
+                            console.error('Error al reiniciar reconocimiento:', error);
+                            this.stopRecording();
+                        }
                     }
                 }, 100);
             }
@@ -127,12 +189,22 @@ class ApunteAI {
         }
 
         this.hidePlaceholder();
-        this.recognition.start();
+        
+        try {
+            this.recognition.start();
+        } catch (error) {
+            console.error('Error al iniciar grabación:', error);
+            this.showError('Error al iniciar la grabación. Intenta nuevamente.');
+        }
     }
 
     stopRecording() {
         if (this.recognition) {
-            this.recognition.stop();
+            try {
+                this.recognition.stop();
+            } catch (error) {
+                console.error('Error al detener grabación:', error);
+            }
         }
         
         this.isRecording = false;
@@ -147,6 +219,8 @@ class ApunteAI {
 
     startTimer() {
         this.startTime = Date.now();
+        this.stopTimer(); // Asegurarse de que no hay otro timer corriendo
+        
         this.timerInterval = setInterval(() => {
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
             const minutes = Math.floor(elapsed / 60);
@@ -193,7 +267,7 @@ class ApunteAI {
     updateTranscriptionDisplay() {
         let displayText = this.transcription;
         
-        if (this.interimTranscription) {
+        if (this.interimTranscription && !this.isMobile) {
             displayText += '<span class="interim"> ' + this.interimTranscription + '</span>';
         }
         
@@ -222,10 +296,6 @@ class ApunteAI {
             // Simular procesamiento con IA
             await this.simulateAISummary();
             
-            // En una implementación real, aquí conectarías con OpenAI API:
-            // const summary = await this.callOpenAI(this.transcription);
-            // this.displaySummary(summary);
-            
         } catch (error) {
             console.error('Error generando resumen:', error);
             this.showError('Error al generar el resumen. Intenta nuevamente.');
@@ -236,7 +306,8 @@ class ApunteAI {
 
     async simulateAISummary() {
         // Simular tiempo de procesamiento
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        const delay = this.isMobile ? 3000 : 2000; // Más tiempo en móvil
+        await new Promise(resolve => setTimeout(resolve, delay));
         
         // Generar resumen simulado basado en el contenido
         const simulatedSummary = this.createSimulatedSummary();
@@ -274,7 +345,9 @@ ${keyPoints}
         this.summaryContent.innerHTML = summary.replace(/\n/g, '<br>');
         
         // Scroll al resumen
-        this.summarySection.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+            this.summarySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
     }
 
     clearTranscription() {
@@ -290,6 +363,7 @@ ${keyPoints}
         this.summarySection.style.display = 'none';
         this.summarizeBtn.disabled = true;
         this.wordCount.textContent = '0 palabras';
+        this.showSuccess('Transcripción limpiada');
     }
 
     exportText() {
@@ -339,7 +413,7 @@ ${keyPoints}
     showNotification(message, type = 'info') {
         // Crear notificación temporal
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        notification.className = `notification ${type === 'error' ? 'notification-error' : type === 'success' ? 'notification-success' : ''}`;
         notification.innerHTML = `
             <span class="notification-icon">${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</span>
             <span>${message}</span>
@@ -357,7 +431,10 @@ ${keyPoints}
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             zIndex: '1000',
             maxWidth: '400px',
-            animation: 'slideIn 0.3s ease'
+            animation: 'slideIn 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
         });
 
         document.body.appendChild(notification);
@@ -379,6 +456,13 @@ document.addEventListener('DOMContentLoaded', () => {
     new ApunteAI();
 });
 
+// Prevenir comportamiento por defecto de touch en botones
+document.addEventListener('touchstart', function(e) {
+    if (e.target.tagName === 'BUTTON') {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 // Agregar estilos para animaciones de notificación
 const style = document.createElement('style');
 style.textContent = `
@@ -390,6 +474,14 @@ style.textContent = `
     @keyframes slideOut {
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
+    }
+    
+    .notification-error {
+        background: #ff6b6b !important;
+    }
+    
+    .notification-success {
+        background: #51cf66 !important;
     }
 `;
 document.head.appendChild(style);
