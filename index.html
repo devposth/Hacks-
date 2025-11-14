@@ -21,6 +21,9 @@
             </div>
         </header>
 
+        <!-- Advertencia del navegador -->
+        <div id="browserWarning" class="browser-warning" style="display: none;"></div>
+
         <!-- Estado de la aplicación -->
         <div class="status-container">
             <div class="timer" id="timer">00:00</div>
@@ -62,7 +65,7 @@
                     </ol>
                     <p class="tip">💡 <strong>Tip:</strong> Funciona mejor en Chrome/Edge con audio claro</p>
                 </div>
-                <div class="transcription-content" id="transcriptionContent"></div>
+                <div class="transcription-content" id="transcriptionContent" style="display: none;"></div>
             </div>
         </div>
 
@@ -70,11 +73,11 @@
         <div class="summary-section" id="summarySection" style="display: none;">
             <h3 class="section-title">📚 Resumen Inteligente</h3>
             <div class="summary-box" id="summaryBox">
-                <div class="loading" id="summaryLoading">
+                <div class="loading" id="summaryLoading" style="display: none;">
                     <div class="spinner"></div>
                     <p>Analizando contenido con IA...</p>
                 </div>
-                <div class="summary-content" id="summaryContent"></div>
+                <div class="summary-content" id="summaryContent" style="display: none;"></div>
             </div>
         </div>
 
