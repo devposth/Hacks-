@@ -25,6 +25,9 @@ body {
     background: var(--background);
     color: var(--dark);
     line-height: 1.6;
+    /* Mejorar rendimiento táctil */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .container {
@@ -113,7 +116,7 @@ body {
     50% { opacity: 0.7; }
 }
 
-/* Botones */
+/* Botones - CORREGIDOS PARA SCROLL MÓVIL */
 .controls, .actions {
     display: flex;
     gap: 1rem;
@@ -135,13 +138,19 @@ body {
     transition: all 0.2s ease;
     min-width: 160px;
     justify-content: center;
-    -webkit-tap-highlight-color: transparent; /* Elimina el highlight en móviles */
-    touch-action: manipulation; /* Mejora la respuesta táctil */
+    -webkit-tap-highlight-color: transparent;
+    /* CORRECCIÓN: Permitir scroll sobre botones */
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    position: relative;
+    z-index: 1;
 }
 
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    transform: none !important;
 }
 
 .btn-primary {
@@ -181,6 +190,11 @@ body {
     animation: pulse 1.5s infinite;
 }
 
+/* Estados activos para móvil */
+.btn:active {
+    transform: scale(0.98);
+}
+
 /* Secciones */
 .transcription-section, .summary-section {
     margin-bottom: 2rem;
@@ -210,7 +224,9 @@ body {
     max-height: 400px;
     overflow-y: auto;
     position: relative;
-    -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Mejorar scroll táctil */
+    scroll-behavior: smooth;
 }
 
 .transcription-box:focus {
@@ -349,6 +365,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    touch-action: none; /* Las notificaciones no deben interferir con scroll */
 }
 
 .notification-error {
@@ -381,11 +398,14 @@ body {
     
     .controls, .actions {
         flex-direction: column;
+        gap: 0.8rem;
     }
     
     .btn {
         min-width: auto;
         width: 100%;
+        padding: 1.3rem 1.5rem; /* Más grande para móviles */
+        min-height: 60px; /* Altura mínima para mejor touch */
     }
     
     .timer {
@@ -396,11 +416,6 @@ body {
         max-height: 300px;
     }
     
-    /* Mejoras específicas para móviles */
-    .btn {
-        padding: 1.2rem 1.5rem; /* Botones más grandes para touch */
-    }
-    
     .section-title {
         flex-direction: column;
         align-items: flex-start;
@@ -409,6 +424,27 @@ body {
     
     .word-count {
         margin-left: 0;
+        font-size: 0.8rem;
+    }
+    
+    /* Mejoras específicas para scroll en móvil */
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .transcription-box, .summary-box {
+        overscroll-behavior: contain;
+    }
+}
+
+/* Mejoras para tablets */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .container {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        padding: 1.1rem 1.3rem;
     }
 }
 
@@ -419,13 +455,72 @@ body {
     }
 }
 
-/* Mejorar rendimiento táctil */
+/* Mejorar rendimiento táctil en dispositivos touch */
 @media (hover: none) and (pointer: coarse) {
     .btn:hover {
         transform: none;
     }
     
     .btn:active {
-        transform: scale(0.98);
+        transform: scale(0.96);
+        transition: transform 0.1s ease;
     }
+    
+    /* Deshabilitar hover effects en móvil */
+    .btn-primary:hover:not(:disabled),
+    .btn-secondary:hover:not(:disabled),
+    .btn-outline:hover:not(:disabled) {
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+/* Estados de focus para accesibilidad */
+.btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Mejorar contraste en modo oscuro */
+@media (prefers-color-scheme: dark) {
+    .transcription-box,
+    .summary-box,
+    .info-box {
+        background: #2d3748;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    
+    .placeholder {
+        color: #a0aec0;
+    }
+}
+
+/* Optimizaciones de rendimiento */
+.btn, .transcription-box, .summary-box {
+    will-change: transform;
+    backface-visibility: hidden;
+}
+
+/* Scrollbar personalizado para navegadores webkit */
+.transcription-box::-webkit-scrollbar,
+.summary-box::-webkit-scrollbar {
+    width: 6px;
+}
+
+.transcription-box::-webkit-scrollbar-track,
+.summary-box::-webkit-scrollbar-track {
+    background: var(--light-gray);
+    border-radius: 3px;
+}
+
+.transcription-box::-webkit-scrollbar-thumb,
+.summary-box::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.transcription-box::-webkit-scrollbar-thumb:hover,
+.summary-box::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
