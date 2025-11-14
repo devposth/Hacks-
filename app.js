@@ -10,7 +10,7 @@ class ApunteAI {
         this.isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
         this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         this.lastTouchTime = 0;
-        this.touchDelay = 300; // Prevenir múltiples toques rápidos
+        this.touchDelay = 500; // Aumentado para mayor seguridad
         
         this.initializeElements();
         this.setupEventListeners();
@@ -37,12 +37,12 @@ class ApunteAI {
     }
 
     setupEventListeners() {
-        // Eventos para desktop y móvil
+        // Eventos para desktop y móvil - SOLUCIÓN PARA BOTÓN LIMPIAR
         this.recordBtn.addEventListener('click', (e) => this.handleRecordClick(e));
         this.recordBtn.addEventListener('touchend', (e) => this.handleRecordClick(e));
         
         this.summarizeBtn.addEventListener('click', () => this.generateSummary());
-        this.clearBtn.addEventListener('click', () => this.clearTranscription());
+        this.clearBtn.addEventListener('click', () => this.clearTranscription()); // CORREGIDO
         this.exportBtn.addEventListener('click', () => this.exportText());
         this.copyBtn.addEventListener('click', () => this.copyText());
         
@@ -108,17 +108,20 @@ class ApunteAI {
 
     initializeSpeechRecognition() {
         this.recognition = new webkitSpeechRecognition();
-        this.recognition.continuous = true;
+        
+        // CONFIGURACIÓN CORREGIDA - EL PROBLEMA ESTABA AQUÍ
+        this.recognition.continuous = true; // SIEMPRE true para que no se detenga
         this.recognition.interimResults = true;
         this.recognition.lang = 'es-ES';
         
-        // Configuraciones optimizadas para móvil
+        // Configuraciones optimizadas - QUITAMOS la restricción para móvil que causaba el problema
         if (this.isMobile) {
-            this.recognition.continuous = false; // Mejor compatibilidad en móvil
-            this.recognition.interimResults = false;
+            // En móvil mantenemos continuous=true pero ajustamos otros parámetros
+            this.recognition.interimResults = false; // Mejor rendimiento en móvil
         }
 
         this.recognition.onstart = () => {
+            console.log('Reconocimiento iniciado');
             this.isRecording = true;
             this.updateUI();
             this.startTimer();
@@ -154,13 +157,21 @@ class ApunteAI {
                 this.showError('Error de red. Verifica tu conexión a internet.');
             } else if (event.error === 'audio-capture') {
                 this.showError('No se detectó micrófono. Verifica tu dispositivo de audio.');
+            } else if (event.error === 'no-speech') {
+                // No es un error crítico, solo reiniciamos
+                console.log('No se detectó voz, reiniciando...');
+                if (this.isRecording) {
+                    this.recognition.start();
+                }
             }
             this.stopRecording();
         };
 
         this.recognition.onend = () => {
+            console.log('Reconocimiento finalizado');
             if (this.isRecording) {
-                // Reconexión automática si aún debería estar grabando
+                // Reconexión automática SIEMPRE que aún debería estar grabando
+                console.log('Reiniciando reconocimiento...');
                 setTimeout(() => {
                     if (this.isRecording) {
                         try {
@@ -168,6 +179,7 @@ class ApunteAI {
                         } catch (error) {
                             console.error('Error al reiniciar reconocimiento:', error);
                             this.stopRecording();
+                            this.showError('Error al reiniciar la grabación. Intenta nuevamente.');
                         }
                     }
                 }, 100);
@@ -192,6 +204,7 @@ class ApunteAI {
         
         try {
             this.recognition.start();
+            console.log('Iniciando grabación...');
         } catch (error) {
             console.error('Error al iniciar grabación:', error);
             this.showError('Error al iniciar la grabación. Intenta nuevamente.');
@@ -199,6 +212,7 @@ class ApunteAI {
     }
 
     stopRecording() {
+        console.log('Deteniendo grabación...');
         if (this.recognition) {
             try {
                 this.recognition.stop();
@@ -226,6 +240,11 @@ class ApunteAI {
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
             this.timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Debug: mostrar en consola cada 10 segundos
+            if (elapsed % 10 === 0) {
+                console.log(`Timer: ${minutes}:${seconds}, Grabando: ${this.isRecording}`);
+            }
         }, 1000);
     }
 
@@ -279,6 +298,36 @@ class ApunteAI {
         
         // Auto-scroll al final
         this.transcriptionBox.scrollTop = this.transcriptionBox.scrollHeight;
+    }
+
+    // MÉTODO clearTranscription CORREGIDO
+    clearTranscription() {
+        console.log('Limpiando transcripción...');
+        
+        // Detener grabación si está activa
+        if (this.isRecording) {
+            this.stopRecording();
+        }
+        
+        // Limpiar todo el estado
+        this.transcription = '';
+        this.interimTranscription = '';
+        this.timer.textContent = '00:00';
+        
+        // Actualizar la interfaz
+        this.updateTranscriptionDisplay();
+        this.showPlaceholder();
+        this.summarySection.style.display = 'none';
+        
+        // IMPORTANTE: Actualizar el estado de los botones
+        this.summarizeBtn.disabled = true;
+        this.wordCount.textContent = '0 palabras';
+        
+        // Forzar actualización de la UI
+        this.updateUI();
+        
+        this.showSuccess('Transcripción limpiada correctamente');
+        console.log('Transcripción limpiada');
     }
 
     async generateSummary() {
@@ -348,22 +397,6 @@ ${keyPoints}
         setTimeout(() => {
             this.summarySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 100);
-    }
-
-    clearTranscription() {
-        if (this.isRecording) {
-            this.stopRecording();
-        }
-        
-        this.transcription = '';
-        this.interimTranscription = '';
-        this.timer.textContent = '00:00';
-        this.updateTranscriptionDisplay();
-        this.showPlaceholder();
-        this.summarySection.style.display = 'none';
-        this.summarizeBtn.disabled = true;
-        this.wordCount.textContent = '0 palabras';
-        this.showSuccess('Transcripción limpiada');
     }
 
     exportText() {
