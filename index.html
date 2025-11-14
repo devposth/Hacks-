@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎤 ApunteAI - Transcripción Inteligente de Clases</title>
+    <meta name="description" content="Transcribe y resume tus clases automáticamente con IA. Totalmente gratuito.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="assets/icon.png" type="image/png">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="title">🎤 ApunteAI</h1>
+            <p class="subtitle">Tu asistente inteligente para transcripción de clases</p>
+            <div class="badges">
+                <span class="badge">100% Gratis</span>
+                <span class="badge">Sin Instalación</span>
+                <span class="badge">Tiempo Real</span>
+            </div>
+        </header>
+
+        <!-- Estado de la aplicación -->
+        <div class="status-container">
+            <div class="timer" id="timer">00:00</div>
+            <div class="status" id="status">Listo para comenzar</div>
+        </div>
+
+        <!-- Controles principales -->
+        <div class="controls">
+            <button id="recordBtn" class="btn btn-primary">
+                <span class="btn-icon">🎤</span>
+                <span class="btn-text">Comenzar Clase</span>
+            </button>
+            
+            <button id="summarizeBtn" class="btn btn-secondary" disabled>
+                <span class="btn-icon">📊</span>
+                <span class="btn-text">Generar Resumen IA</span>
+            </button>
+            
+            <button id="clearBtn" class="btn btn-outline">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">Limpiar</span>
+            </button>
+        </div>
+
+        <!-- Área de transcripción -->
+        <div class="transcription-section">
+            <h3 class="section-title">
+                📝 Transcripción en Tiempo Real
+                <span class="word-count" id="wordCount">0 palabras</span>
+            </h3>
+            <div class="transcription-box" id="transcriptionBox">
+                <div class="placeholder" id="placeholder">
+                    <p>🎯 <strong>¿Cómo usar?</strong></p>
+                    <ol>
+                        <li>Haz clic en "Comenzar Clase" y permite el acceso al micrófono</li>
+                        <li>Habla normalmente durante tu clase o estudio</li>
+                        <li>La transcripción aparecerá aquí en tiempo real</li>
+                        <li>Al finalizar, usa "Generar Resumen IA" para obtener los puntos clave</li>
+                    </ol>
+                    <p class="tip">💡 <strong>Tip:</strong> Funciona mejor en Chrome/Edge con audio claro</p>
+                </div>
+                <div class="transcription-content" id="transcriptionContent"></div>
+            </div>
+        </div>
+
+        <!-- Resumen con IA -->
+        <div class="summary-section" id="summarySection" style="display: none;">
+            <h3 class="section-title">📚 Resumen Inteligente</h3>
+            <div class="summary-box" id="summaryBox">
+                <div class="loading" id="summaryLoading">
+                    <div class="spinner"></div>
+                    <p>Analizando contenido con IA...</p>
+                </div>
+                <div class="summary-content" id="summaryContent"></div>
+            </div>
+        </div>
+
+        <!-- Acciones adicionales -->
+        <div class="actions">
+            <button id="exportBtn" class="btn btn-outline">
+                <span class="btn-icon">💾</span>
+                <span class="btn-text">Exportar Texto</span>
+            </button>
+            
+            <button id="copyBtn" class="btn btn-outline">
+                <span class="btn-icon">📋</span>
+                <span class="btn-text">Copiar Texto</span>
+            </button>
+        </div>
+
+        <!-- Información -->
+        <div class="info-box">
+            <h4>ℹ️ Información Importante</h4>
+            <ul>
+                <li><strong>Transcripción:</strong> Usa Web Speech API (100% gratis)</li>
+                <li><strong>Resumen IA:</strong> Conecta con OpenAI GPT-4 (simulado en demo)</li>
+                <li><strong>Privacidad:</strong> Todo procesado localmente, tu audio no se envía a servidores</li>
+                <li><strong>Compatibilidad:</strong> Chrome, Edge, Safari (iOS limitado)</li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Creado para BatchHacks 2025 • 
+               <a href="https://github.com/tuusuario/ApunteAI-Web" target="_blank">Código en GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
