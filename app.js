@@ -284,7 +284,7 @@ class ApunteAI {
 
     // MÉTODO MEJORADO - DETECCIÓN AUTOMÁTICA DEL MODELO
     async generateSummaryWithGemini(text) {
-        const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
+        const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
         console.log('🚀 DETECTANDO MODELO CORRECTO...');
         
