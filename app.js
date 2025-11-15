@@ -34,18 +34,16 @@ class ApunteAI {
         this.summaryLoading = document.getElementById('summaryLoading');
         this.wordCount = document.getElementById('wordCount');
         this.browserWarning = document.getElementById('browserWarning');
-        this.classTopicInput = document.getElementById('classTopic'); // NUEVO ELEMENTO
+        this.classTopicInput = document.getElementById('classTopic');
     }
 
     setupEventListeners() {
-        // SOLUCIÓN PARA MÓVIL: Usar solo click para todos los dispositivos
         this.recordBtn.addEventListener('click', (e) => this.handleRecordClick(e));
         this.summarizeBtn.addEventListener('click', () => this.generateSummary());
         this.clearBtn.addEventListener('click', () => this.clearTranscription());
         this.exportBtn.addEventListener('click', () => this.exportText());
         this.copyBtn.addEventListener('click', () => this.copyText());
         
-        // Tecla espacio para grabar/pausar (solo desktop)
         if (!this.isMobile) {
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space' && !e.target.matches('button, input, textarea')) {
@@ -55,7 +53,6 @@ class ApunteAI {
             });
         }
 
-        // Manejar visibilidad de la página para detener grabación cuando no está visible
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && this.isRecording) {
                 this.stopRecording();
@@ -64,7 +61,6 @@ class ApunteAI {
     }
 
     handleRecordClick(e) {
-        // SOLUCIÓN SIMPLIFICADA: Solo prevención básica para el botón de grabación
         if (this.isMobile) {
             const currentTime = new Date().getTime();
             if (currentTime - this.lastTouchTime < this.touchDelay) {
@@ -262,10 +258,7 @@ class ApunteAI {
         this.transcriptionBox.scrollTop = this.transcriptionBox.scrollHeight;
     }
 
-    // MÉTODO MEJORADO PARA MÓVIL
     clearTranscription() {
-        console.log('Botón limpiar presionado en móvil');
-        
         if (this.isRecording) {
             this.stopRecording();
         }
@@ -273,7 +266,7 @@ class ApunteAI {
         this.transcription = '';
         this.interimTranscription = '';
         this.timer.textContent = '00:00';
-        this.classTopicInput.value = ''; // LIMPIAR EL TEMA TAMBIÉN
+        this.classTopicInput.value = '';
         
         this.updateTranscriptionDisplay();
         this.showPlaceholder();
@@ -286,47 +279,38 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // NUEVO MÉTODO: Generar resumen con Gemini IA REAL
+    // MÉTODO MEJORADO PARA GEMINI
     async generateSummaryWithGemini(text) {
-        // 🔑 REEMPLAZA ESTA KEY con la tuya de Google AI Studio
         const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
         
-        // Limitar texto para no exceder límites (opcional)
-        const limitedText = text.length > 10000 ? text.substring(0, 10000) + "..." : text;
+        console.log('🚀 Iniciando conexión con Gemini...');
+        
+        // Limitar texto para evitar errores
+        const limitedText = text.length > 5000 ? text.substring(0, 5000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        // PROMPT MEJORADO con el tema
-        const prompt = topic ? 
-            `Eres un experto en ${topic}. Crea un resumen especializado de esta clase.
+        // Prompt optimizado
+        let prompt = `Como asistente educativo, crea un resumen profesional en español del siguiente texto de clase:\n\n"${limitedText}"\n\n`;
+        
+        if (topic) {
+            prompt += `El tema principal es: ${topic}. Enfócate en este tema y usa terminología especializada.\n\n`;
+        }
+        
+        prompt += `Estructura el resumen en estas secciones:
+• 📝 Puntos clave principales
+• 🎯 Conceptos importantes  
+• 💡 Aplicaciones prácticas
+• 📚 Recomendaciones de estudio
 
-TEMA PRINCIPAL: ${topic}
-TEXTO DE LA CLASE:
-${limitedText}
-
-INSTRUCCIONES:
-1. Usa terminología específica de ${topic}
-2. Identifica conceptos clave del área
-3. Destaca aplicaciones prácticas
-4. Sugiere recursos de estudio relevantes
-5. Estructura en: Puntos Clave, Conceptos Técnicos, Aplicaciones Prácticas
-6. Usa emojis relacionados con ${topic}` 
-            :
-            `Eres un asistente educativo experto en crear resúmenes estructurados de clases.
-
-TEXTO DE LA CLASE:
-${limitedText}
-
-INSTRUCCIONES:
-1. Crea un resumen claro y organizado en español
-2. Identifica el tema principal automáticamente
-3. Estructura en: Puntos Clave, Conceptos Principales, Recomendaciones
-4. Usa emojis para hacerlo más visual`;
+Usa emojis relevantes, lenguaje claro y sé conciso.`;
 
         try {
+            console.log('📤 Enviando solicitud a Gemini API...');
+            
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     contents: [{
@@ -336,33 +320,76 @@ INSTRUCCIONES:
                     }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 1200,
-                    }
+                        maxOutputTokens: 1500,
+                        topP: 0.8,
+                        topK: 40
+                    },
+                    safetySettings: [
+                        {
+                            category: "HARM_CATEGORY_HARASSMENT",
+                            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                        },
+                        {
+                            category: "HARM_CATEGORY_HATE_SPEECH", 
+                            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                        }
+                    ]
                 })
             });
 
+            console.log('📥 Respuesta recibida, status:', response.status);
+
             if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
+                const errorData = await response.json();
+                console.error('❌ Error de API:', errorData);
+                throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
             }
 
             const data = await response.json();
-            
-            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                let summary = data.candidates[0].content.parts[0].text;
+            console.log('✅ Respuesta exitosa de Gemini');
+
+            // Verificar estructura de respuesta
+            if (data.candidates && 
+                data.candidates[0] && 
+                data.candidates[0].content && 
+                data.candidates[0].content.parts && 
+                data.candidates[0].content.parts[0] &&
+                data.candidates[0].content.parts[0].text) {
                 
-                // Agregar header con el tema si existe
+                let summary = data.candidates[0].content.parts[0].text.trim();
+                
+                // Agregar encabezado con tema
                 if (topic) {
-                    summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` + summary;
+                    summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                } else {
+                    summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
                 }
                 
+                console.log('✨ Resumen generado exitosamente');
                 return summary;
+                
             } else {
-                throw new Error('Respuesta inesperada de la API');
+                console.error('❌ Estructura de respuesta inválida:', data);
+                throw new Error('La API respondió con formato inesperado');
             }
             
         } catch (error) {
-            console.error('Error con Gemini:', error);
-            throw error;
+            console.error('💥 Error completo con Gemini:', error);
+            
+            // Manejar errores específicos
+            if (error.message.includes('400')) {
+                throw new Error('Solicitud inválida a la API');
+            } else if (error.message.includes('403')) {
+                throw new Error('API Key sin permisos o proyecto no habilitado');
+            } else if (error.message.includes('429')) {
+                throw new Error('Límite de uso excedido. Espera un momento.');
+            } else if (error.message.includes('500')) {
+                throw new Error('Error interno del servidor de Google');
+            } else if (error.message.includes('Network Error')) {
+                throw new Error('Error de conexión a internet');
+            } else {
+                throw new Error(`Error: ${error.message}`);
+            }
         }
     }
 
@@ -378,17 +405,17 @@ INSTRUCCIONES:
         this.summarizeBtn.disabled = true;
 
         try {
-            // ✅ USAR IA REAL en lugar de simulación
+            console.log('🔄 Generando resumen con IA real...');
             const summary = await this.generateSummaryWithGemini(this.transcription);
             this.displaySummary(summary);
             
         } catch (error) {
-            console.error('Error generando resumen con IA:', error);
+            console.error('❌ Error en generateSummary:', error);
             
-            // ✅ FALLBACK: Si falla la IA, usar simulación
-            this.showError('No se pudo conectar con el servicio de IA. Usando modo simulado...');
+            // Fallback a simulación
+            this.showError('No se pudo conectar con Gemini. Usando modo simulado...');
             const simulatedSummary = this.createSimulatedSummary();
-            this.displaySummary("⚠️ **MODO SIMULADO** (sin conexión a IA):\n\n" + simulatedSummary);
+            this.displaySummary("⚠️ **MODO SIMULADO** - Sin conexión a IA:\n\n" + simulatedSummary);
             
         } finally {
             this.summaryLoading.style.display = 'none';
@@ -396,40 +423,22 @@ INSTRUCCIONES:
         }
     }
 
-    async simulateAISummary() {
-        const delay = this.isMobile ? 3000 : 2000;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        const simulatedSummary = this.createSimulatedSummary();
-        this.displaySummary(simulatedSummary);
-    }
-
     createSimulatedSummary() {
         const lines = this.transcription.split('. ').filter(line => line.length > 10);
-        const keyPoints = lines.slice(0, 5).map((line, index) => 
+        const keyPoints = lines.slice(0, 4).map((line, index) => 
             `${index + 1}. ${line.trim()}`
         ).join('\n\n');
 
         const topic = this.classTopicInput.value.trim();
         const topicHeader = topic ? `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` : '';
 
-        return `${topicHeader}📚 **RESUMEN DE LA CLASE** (Simulado con IA)
+        return `${topicHeader}📚 **RESUMEN SIMULADO**
 
 🔍 **Puntos Clave Identificados:**
 
 ${keyPoints}
 
-🎯 **Conceptos Principales:**
-• Transcripción automática de voz a texto
-• Procesamiento de lenguaje natural
-• Análisis de contenido educativo
-
-💡 **Recomendaciones de Estudio:**
-1. Revisar los conceptos de reconocimiento de voz
-2. Practicar con diferentes acentos y velocidades
-3. Explorar aplicaciones en educación
-
-⚠️ **Nota:** Este es un resumen simulado. Para resúmenes con IA real, configura tu API Key de Google Gemini.`;
+💡 **Este es un resumen de demostración. Para resúmenes con IA real, asegúrate de que tu API Key de Google Gemini esté configurada correctamente.**`;
     }
 
     displaySummary(summary) {
@@ -529,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
     new ApunteAI();
 });
 
-// Agregar estilos para animaciones de notificación
+// Estilos para notificaciones
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideIn {
