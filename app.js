@@ -279,17 +279,15 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // MÉTODO MEJORADO PARA GEMINI
+    // MÉTODO CORREGIDO - USANDO EL MODELO CORRECTO
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
         
         console.log('🚀 Iniciando conexión con Gemini...');
         
-        // Limitar texto para evitar errores
         const limitedText = text.length > 5000 ? text.substring(0, 5000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        // Prompt optimizado
         let prompt = `Como asistente educativo, crea un resumen profesional en español del siguiente texto de clase:\n\n"${limitedText}"\n\n`;
         
         if (topic) {
@@ -307,7 +305,8 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
         try {
             console.log('📤 Enviando solicitud a Gemini API...');
             
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`, {
+            // ✅ URL CORREGIDA - usando gemini-1.5-pro
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -323,17 +322,7 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
                         maxOutputTokens: 1500,
                         topP: 0.8,
                         topK: 40
-                    },
-                    safetySettings: [
-                        {
-                            category: "HARM_CATEGORY_HARASSMENT",
-                            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                        },
-                        {
-                            category: "HARM_CATEGORY_HATE_SPEECH", 
-                            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                        }
-                    ]
+                    }
                 })
             });
 
@@ -348,7 +337,6 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
             const data = await response.json();
             console.log('✅ Respuesta exitosa de Gemini');
 
-            // Verificar estructura de respuesta
             if (data.candidates && 
                 data.candidates[0] && 
                 data.candidates[0].content && 
@@ -358,7 +346,6 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
                 
                 let summary = data.candidates[0].content.parts[0].text.trim();
                 
-                // Agregar encabezado con tema
                 if (topic) {
                     summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
                 } else {
@@ -376,17 +363,12 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
         } catch (error) {
             console.error('💥 Error completo con Gemini:', error);
             
-            // Manejar errores específicos
-            if (error.message.includes('400')) {
-                throw new Error('Solicitud inválida a la API');
+            if (error.message.includes('404')) {
+                throw new Error('Modelo no encontrado. Probemos con gemini-1.0-pro...');
             } else if (error.message.includes('403')) {
                 throw new Error('API Key sin permisos o proyecto no habilitado');
             } else if (error.message.includes('429')) {
                 throw new Error('Límite de uso excedido. Espera un momento.');
-            } else if (error.message.includes('500')) {
-                throw new Error('Error interno del servidor de Google');
-            } else if (error.message.includes('Network Error')) {
-                throw new Error('Error de conexión a internet');
             } else {
                 throw new Error(`Error: ${error.message}`);
             }
@@ -412,8 +394,8 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
         } catch (error) {
             console.error('❌ Error en generateSummary:', error);
             
-            // Fallback a simulación
-            this.showError('No se pudo conectar con Gemini. Usando modo simulado...');
+            this.showError(`Error: ${error.message}`);
+            
             const simulatedSummary = this.createSimulatedSummary();
             this.displaySummary("⚠️ **MODO SIMULADO** - Sin conexión a IA:\n\n" + simulatedSummary);
             
@@ -438,7 +420,7 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
 
 ${keyPoints}
 
-💡 **Este es un resumen de demostración. Para resúmenes con IA real, asegúrate de que tu API Key de Google Gemini esté configurada correctamente.**`;
+💡 **Este es un resumen de demostración.**`;
     }
 
     displaySummary(summary) {
