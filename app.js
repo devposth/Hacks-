@@ -289,7 +289,7 @@ class ApunteAI {
     // NUEVO MÉTODO: Generar resumen con Gemini IA REAL
     async generateSummaryWithGemini(text) {
         // 🔑 REEMPLAZA ESTA KEY con la tuya de Google AI Studio
-        const API_KEY = 'TU_API_KEY_DE_GOOGLE_AQUI';
+        const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
         
         // Limitar texto para no exceder límites (opcional)
         const limitedText = text.length > 10000 ? text.substring(0, 10000) + "..." : text;
