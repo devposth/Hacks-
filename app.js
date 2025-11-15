@@ -34,6 +34,7 @@ class ApunteAI {
         this.summaryLoading = document.getElementById('summaryLoading');
         this.wordCount = document.getElementById('wordCount');
         this.browserWarning = document.getElementById('browserWarning');
+        this.classTopicInput = document.getElementById('classTopic'); // NUEVO ELEMENTO
     }
 
     setupEventListeners() {
@@ -43,9 +44,6 @@ class ApunteAI {
         this.clearBtn.addEventListener('click', () => this.clearTranscription());
         this.exportBtn.addEventListener('click', () => this.exportText());
         this.copyBtn.addEventListener('click', () => this.copyText());
-        
-        // ELIMINAMOS la prevención de double tap que bloqueaba los botones
-        // this.preventDoubleTapZoom([this.recordBtn, this.summarizeBtn, this.clearBtn, this.exportBtn, this.copyBtn]);
         
         // Tecla espacio para grabar/pausar (solo desktop)
         if (!this.isMobile) {
@@ -64,15 +62,6 @@ class ApunteAI {
             }
         });
     }
-
-    // ELIMINAMOS este método que causaba problemas en móvil
-    // preventDoubleTapZoom(elements) {
-    //     elements.forEach(element => {
-    //         element.addEventListener('touchend', (e) => {
-    //             e.preventDefault();
-    //         });
-    //     });
-    // }
 
     handleRecordClick(e) {
         // SOLUCIÓN SIMPLIFICADA: Solo prevención básica para el botón de grabación
@@ -284,6 +273,7 @@ class ApunteAI {
         this.transcription = '';
         this.interimTranscription = '';
         this.timer.textContent = '00:00';
+        this.classTopicInput.value = ''; // LIMPIAR EL TEMA TAMBIÉN
         
         this.updateTranscriptionDisplay();
         this.showPlaceholder();
@@ -294,6 +284,86 @@ class ApunteAI {
         this.updateUI();
         
         this.showSuccess('Transcripción limpiada correctamente');
+    }
+
+    // NUEVO MÉTODO: Generar resumen con Gemini IA REAL
+    async generateSummaryWithGemini(text) {
+        // 🔑 REEMPLAZA ESTA KEY con la tuya de Google AI Studio
+        const API_KEY = 'TU_API_KEY_DE_GOOGLE_AQUI';
+        
+        // Limitar texto para no exceder límites (opcional)
+        const limitedText = text.length > 10000 ? text.substring(0, 10000) + "..." : text;
+        const topic = this.classTopicInput.value.trim();
+        
+        // PROMPT MEJORADO con el tema
+        const prompt = topic ? 
+            `Eres un experto en ${topic}. Crea un resumen especializado de esta clase.
+
+TEMA PRINCIPAL: ${topic}
+TEXTO DE LA CLASE:
+${limitedText}
+
+INSTRUCCIONES:
+1. Usa terminología específica de ${topic}
+2. Identifica conceptos clave del área
+3. Destaca aplicaciones prácticas
+4. Sugiere recursos de estudio relevantes
+5. Estructura en: Puntos Clave, Conceptos Técnicos, Aplicaciones Prácticas
+6. Usa emojis relacionados con ${topic}` 
+            :
+            `Eres un asistente educativo experto en crear resúmenes estructurados de clases.
+
+TEXTO DE LA CLASE:
+${limitedText}
+
+INSTRUCCIONES:
+1. Crea un resumen claro y organizado en español
+2. Identifica el tema principal automáticamente
+3. Estructura en: Puntos Clave, Conceptos Principales, Recomendaciones
+4. Usa emojis para hacerlo más visual`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1200,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                let summary = data.candidates[0].content.parts[0].text;
+                
+                // Agregar header con el tema si existe
+                if (topic) {
+                    summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` + summary;
+                }
+                
+                return summary;
+            } else {
+                throw new Error('Respuesta inesperada de la API');
+            }
+            
+        } catch (error) {
+            console.error('Error con Gemini:', error);
+            throw error;
+        }
     }
 
     async generateSummary() {
@@ -308,12 +378,20 @@ class ApunteAI {
         this.summarizeBtn.disabled = true;
 
         try {
-            await this.simulateAISummary();
+            // ✅ USAR IA REAL en lugar de simulación
+            const summary = await this.generateSummaryWithGemini(this.transcription);
+            this.displaySummary(summary);
             
         } catch (error) {
-            console.error('Error generando resumen:', error);
-            this.showError('Error al generar el resumen. Intenta nuevamente.');
+            console.error('Error generando resumen con IA:', error);
+            
+            // ✅ FALLBACK: Si falla la IA, usar simulación
+            this.showError('No se pudo conectar con el servicio de IA. Usando modo simulado...');
+            const simulatedSummary = this.createSimulatedSummary();
+            this.displaySummary("⚠️ **MODO SIMULADO** (sin conexión a IA):\n\n" + simulatedSummary);
+            
         } finally {
+            this.summaryLoading.style.display = 'none';
             this.summarizeBtn.disabled = false;
         }
     }
@@ -332,7 +410,10 @@ class ApunteAI {
             `${index + 1}. ${line.trim()}`
         ).join('\n\n');
 
-        return `📚 **RESUMEN DE LA CLASE** (Simulado con IA)
+        const topic = this.classTopicInput.value.trim();
+        const topicHeader = topic ? `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` : '';
+
+        return `${topicHeader}📚 **RESUMEN DE LA CLASE** (Simulado con IA)
 
 🔍 **Puntos Clave Identificados:**
 
@@ -348,7 +429,7 @@ ${keyPoints}
 2. Practicar con diferentes acentos y velocidades
 3. Explorar aplicaciones en educación
 
-⚠️ **Nota:** Este es un resumen simulado. En producción, conectaríamos con OpenAI GPT-4 para análisis real del contenido.`;
+⚠️ **Nota:** Este es un resumen simulado. Para resúmenes con IA real, configura tu API Key de Google Gemini.`;
     }
 
     displaySummary(summary) {
@@ -447,13 +528,6 @@ ${keyPoints}
 document.addEventListener('DOMContentLoaded', () => {
     new ApunteAI();
 });
-
-// ELIMINAMOS completamente este event listener que bloqueaba el scroll
-// document.addEventListener('touchstart', function(e) {
-//     if (e.target.tagName === 'BUTTON') {
-//         e.preventDefault();
-//     }
-// }, { passive: false });
 
 // Agregar estilos para animaciones de notificación
 const style = document.createElement('style');
