@@ -279,34 +279,34 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // MÉTODO CORREGIDO - USANDO EL MODELO CORRECTO
+    // MÉTODO CORREGIDO - USANDO gemini-1.0-pro (MODELO QUE SÍ FUNCIONA)
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
         
-        console.log('🚀 Iniciando conexión con Gemini...');
+        console.log('🚀 CORREGIDO: Usando gemini-1.0-pro (modelo gratuito)');
         
-        const limitedText = text.length > 5000 ? text.substring(0, 5000) + "..." : text;
+        const limitedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        let prompt = `Como asistente educativo, crea un resumen profesional en español del siguiente texto de clase:\n\n"${limitedText}"\n\n`;
+        let prompt = `Como experto educativo, crea un resumen claro en español de esta clase:\n\n"${limitedText}"\n\n`;
         
         if (topic) {
-            prompt += `El tema principal es: ${topic}. Enfócate en este tema y usa terminología especializada.\n\n`;
+            prompt += `ENFÓCATE en el tema: ${topic}. Usa terminología apropiada.\n\n`;
         }
         
-        prompt += `Estructura el resumen en estas secciones:
-• 📝 Puntos clave principales
-• 🎯 Conceptos importantes  
-• 💡 Aplicaciones prácticas
-• 📚 Recomendaciones de estudio
+        prompt += `ORGANIZA el resumen en:
+📌 PUNTOS CLAVE PRINCIPALES
+🎯 CONCEPTOS IMPORTANTES  
+💡 APLICACIONES PRÁCTICAS
+📚 RECOMENDACIONES DE ESTUDIO
 
-Usa emojis relevantes, lenguaje claro y sé conciso.`;
+Usa emojis y sé conciso pero informativo.`;
 
         try {
-            console.log('📤 Enviando solicitud a Gemini API...');
+            console.log('📤 Enviando a gemini-1.0-pro...');
             
-            // ✅ URL CORREGIDA - usando gemini-1.5-pro
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+            // ✅ URL CORREGIDA - gemini-1.0-pro (MODELO GRATUITO QUE SÍ FUNCIONA)
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${API_KEY}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -319,24 +319,24 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
                     }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 1500,
-                        topP: 0.8,
-                        topK: 40
+                        maxOutputTokens: 1000,
+                        topP: 0.8
                     }
                 })
             });
 
-            console.log('📥 Respuesta recibida, status:', response.status);
+            console.log('📥 Status de respuesta:', response.status);
 
             if (!response.ok) {
                 const errorData = await response.json();
                 console.error('❌ Error de API:', errorData);
-                throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
+                throw new Error(`Error ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('✅ Respuesta exitosa de Gemini');
+            console.log('✅ ÉXITO! Respuesta recibida de Gemini');
 
+            // Verificar la estructura de respuesta
             if (data.candidates && 
                 data.candidates[0] && 
                 data.candidates[0].content && 
@@ -346,31 +346,32 @@ Usa emojis relevantes, lenguaje claro y sé conciso.`;
                 
                 let summary = data.candidates[0].content.parts[0].text.trim();
                 
+                // Agregar encabezado con tema
                 if (topic) {
                     summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
                 } else {
                     summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
                 }
                 
-                console.log('✨ Resumen generado exitosamente');
+                console.log('✨ Resumen generado exitosamente con IA REAL!');
                 return summary;
                 
             } else {
                 console.error('❌ Estructura de respuesta inválida:', data);
-                throw new Error('La API respondió con formato inesperado');
+                throw new Error('Respuesta inesperada de la API');
             }
             
         } catch (error) {
-            console.error('💥 Error completo con Gemini:', error);
+            console.error('💥 Error con Gemini:', error);
             
             if (error.message.includes('404')) {
-                throw new Error('Modelo no encontrado. Probemos con gemini-1.0-pro...');
+                throw new Error('Problema de configuración con Google AI Studio');
             } else if (error.message.includes('403')) {
-                throw new Error('API Key sin permisos o proyecto no habilitado');
+                throw new Error('API Key no tiene permisos. Verifica tu proyecto en Google AI Studio');
             } else if (error.message.includes('429')) {
-                throw new Error('Límite de uso excedido. Espera un momento.');
+                throw new Error('Límite de uso excedido. Espera 1 minuto.');
             } else {
-                throw new Error(`Error: ${error.message}`);
+                throw new Error(`Error de conexión: ${error.message}`);
             }
         }
     }
