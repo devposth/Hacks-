@@ -282,11 +282,12 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // MÉTODO MEJORADO - DETECCIÓN AUTOMÁTICA DEL MODELO
+    // 🔥 **MÉTODO CORREGIDO - URL ACTUALIZADA 2024**
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
-        console.log('🚀 DETECTANDO MODELO CORRECTO...');
+        console.log('🚀 CONECTANDO CON GEMINI...');
+        console.log('🔑 Usando NUEVA API Key de Google AI Studio');
         
         const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
@@ -295,23 +296,20 @@ class ApunteAI {
         if (topic) prompt += `ENFÓCATE en: ${topic}\n\n`;
         prompt += `Estructura en: • Puntos clave • Conceptos importantes • Aplicaciones prácticas • Recomendaciones de estudio\n\nUsa emojis y lenguaje claro.`;
 
-        // TODOS los modelos posibles de Gemini
+        // 🔥 **MODELOS ACTUALIZADOS - URL CORRECTA**
         const modelsToTry = [
-            'gemini-1.0-pro',
-            'gemini-pro', 
-            'gemini-1.5-pro',
             'gemini-1.5-flash',
-            'gemini-1.0-pro-001',
-            'models/gemini-pro',
-            'gemini-1.0-pro-latest'
+            'gemini-1.5-pro',
+            'gemini-1.0-pro'
         ];
 
         for (let i = 0; i < modelsToTry.length; i++) {
             const model = modelsToTry[i];
             try {
-                console.log(`🔧 Probando [${i + 1}/${modelsToTry.length}]: ${model}`);
+                console.log(`🔧 [${i + 1}/${modelsToTry.length}] Probando: ${model}`);
                 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+                // 🔥 **URL CORREGIDA - Sin /v1beta/**
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -351,6 +349,8 @@ class ApunteAI {
                     }
                 } else {
                     console.log(`❌ ${model} no disponible (${response.status})`);
+                    const errorData = await response.text();
+                    console.log('📄 Respuesta del error:', errorData);
                 }
                 
             } catch (error) {
@@ -359,7 +359,7 @@ class ApunteAI {
         }
         
         // Si todos los modelos fallan
-        throw new Error('No se encontró un modelo funcional. Verifica que "Gemini API" esté habilitado en Google Cloud Console.');
+        throw new Error('No se pudo conectar con Gemini. La nueva API Key puede necesitar unos minutos para activarse.');
     }
 
     async generateSummary() {
@@ -368,13 +368,14 @@ class ApunteAI {
             return;
         }
 
+        console.log('🔄 === INICIANDO GENERACIÓN CON IA REAL ===');
+        
         this.summarySection.style.display = 'block';
         this.summaryLoading.style.display = 'block';
         this.summaryContent.style.display = 'none';
         this.summarizeBtn.disabled = true;
 
         try {
-            console.log('🔄 Generando resumen con IA real...');
             const summary = await this.generateSummaryWithGemini(this.transcription);
             this.displaySummary(summary);
             
