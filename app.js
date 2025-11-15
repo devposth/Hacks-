@@ -282,34 +282,34 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // MÉTODO CON NUEVA API KEY - VERSIÓN OPTIMIZADA
+    // MÉTODO MEJORADO - DETECCIÓN AUTOMÁTICA DEL MODELO
     async generateSummaryWithGemini(text) {
-        const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
+        const API_KEY = 'AIzaSyA83ZOpHjI665CwvORRgPInWHHBj-j83h8';
         
-        console.log('🚀 CONECTANDO CON GEMINI...');
-        console.log('🔑 Usando NUEVA API Key de Google AI Studio');
-
-        const limitedText = text.length > 2000 ? text.substring(0, 2000) + "..." : text;
+        console.log('🚀 DETECTANDO MODELO CORRECTO...');
+        
+        const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
         let prompt = `Como experto educativo, crea un resumen profesional en español:\n\n"${limitedText}"\n\n`;
-        if (topic) prompt += `ENFÓCATE en el tema: ${topic}\n\n`;
-        prompt += `Estructura el resumen en:\n• 📝 Puntos clave principales\n• 🎯 Conceptos importantes  \n• 💡 Aplicaciones prácticas\n• 📚 Recomendaciones de estudio\n\nUsa emojis y lenguaje claro.`;
+        if (topic) prompt += `ENFÓCATE en: ${topic}\n\n`;
+        prompt += `Estructura en: • Puntos clave • Conceptos importantes • Aplicaciones prácticas • Recomendaciones de estudio\n\nUsa emojis y lenguaje claro.`;
 
-        // Modelos a probar en orden de probabilidad
+        // TODOS los modelos posibles de Gemini
         const modelsToTry = [
             'gemini-1.0-pro',
-            'gemini-pro',
+            'gemini-pro', 
+            'gemini-1.5-pro',
             'gemini-1.5-flash',
-            'gemini-1.5-pro'
+            'gemini-1.0-pro-001',
+            'models/gemini-pro',
+            'gemini-1.0-pro-latest'
         ];
-
-        console.log(`🔄 Probando ${modelsToTry.length} modelos...`);
 
         for (let i = 0; i < modelsToTry.length; i++) {
             const model = modelsToTry[i];
             try {
-                console.log(`🔧 [${i + 1}/${modelsToTry.length}] Probando: ${model}`);
+                console.log(`🔧 Probando [${i + 1}/${modelsToTry.length}]: ${model}`);
                 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
                     method: 'POST',
@@ -325,18 +325,19 @@ class ApunteAI {
                         generationConfig: {
                             temperature: 0.7,
                             maxOutputTokens: 1200,
-                            topP: 0.8
+                            topP: 0.8,
+                            topK: 40
                         }
                     })
                 });
 
-                console.log(`📥 Status: ${response.status}`);
+                console.log(`📥 Status para ${model}: ${response.status}`);
                 
                 if (response.status === 200) {
                     const data = await response.json();
-                    console.log(`🎉 ¡ÉXITO! Modelo funcionando: ${model}`);
+                    console.log(`✅ ¡MODELO ENCONTRADO! Funciona: ${model}`);
                     
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
                         let summary = data.candidates[0].content.parts[0].text.trim();
                         
                         if (topic) {
@@ -349,15 +350,16 @@ class ApunteAI {
                         return summary;
                     }
                 } else {
-                    console.log(`❌ ${model}: No disponible (${response.status})`);
+                    console.log(`❌ ${model} no disponible (${response.status})`);
                 }
                 
             } catch (error) {
-                console.log(`💥 Error con ${model}:`, error.message);
+                console.log(`❌ Error con ${model}:`, error.message);
             }
         }
         
-        throw new Error('No se pudo conectar con Gemini. La nueva API Key puede necesitar unos minutos para activarse.');
+        // Si todos los modelos fallan
+        throw new Error('No se encontró un modelo funcional. Verifica que "Gemini API" esté habilitado en Google Cloud Console.');
     }
 
     async generateSummary() {
@@ -372,18 +374,18 @@ class ApunteAI {
         this.summarizeBtn.disabled = true;
 
         try {
-            console.log('🔄 === INICIANDO GENERACIÓN CON IA REAL ===');
+            console.log('🔄 Generando resumen con IA real...');
             const summary = await this.generateSummaryWithGemini(this.transcription);
             this.displaySummary(summary);
             
         } catch (error) {
-            console.error('❌ Error:', error);
+            console.error('❌ Error en generateSummary:', error);
             
             this.showError(`Error: ${error.message}`);
             
-            // Fallback a simulación mejorada
+            // Fallback a simulación
             const simulatedSummary = this.createSimulatedSummary();
-            this.displaySummary("⚠️ **MODO SIMULADO** - Probando nueva configuración:\n\n" + simulatedSummary);
+            this.displaySummary("⚠️ **MODO SIMULADO** - Sin conexión a IA:\n\n" + simulatedSummary);
             
         } finally {
             this.summaryLoading.style.display = 'none';
@@ -406,7 +408,7 @@ class ApunteAI {
 
 ${keyPoints}
 
-💡 **Nota:** Usando nueva API Key. Si ves este mensaje, espera 2-3 minutos e intenta nuevamente.`;
+💡 **Nota:** Para resúmenes con IA real, verifica la configuración de Gemini API.`;
     }
 
     displaySummary(summary) {
@@ -464,6 +466,10 @@ ${keyPoints}
     }
 
     showNotification(message, type = 'info') {
+        // Eliminar notificaciones existentes
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notification => notification.remove());
+
         const notification = document.createElement('div');
         notification.className = `notification ${type === 'error' ? 'notification-error' : type === 'success' ? 'notification-success' : ''}`;
         notification.innerHTML = `
