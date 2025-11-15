@@ -174,6 +174,7 @@ class ApunteAI {
         
         try {
             this.recognition.start();
+            console.log('🎤 Grabación iniciada');
         } catch (error) {
             console.error('Error al iniciar grabación:', error);
             this.showError('Error al iniciar la grabación. Intenta nuevamente.');
@@ -181,6 +182,7 @@ class ApunteAI {
     }
 
     stopRecording() {
+        console.log('🛑 Grabación detenida');
         if (this.recognition) {
             try {
                 this.recognition.stop();
@@ -259,6 +261,7 @@ class ApunteAI {
     }
 
     clearTranscription() {
+        console.log('🗑️ Limpiando transcripción');
         if (this.isRecording) {
             this.stopRecording();
         }
@@ -463,6 +466,10 @@ ${keyPoints}
     }
 
     showNotification(message, type = 'info') {
+        // Eliminar notificaciones existentes
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notification => notification.remove());
+
         const notification = document.createElement('div');
         notification.className = `notification ${type === 'error' ? 'notification-error' : type === 'success' ? 'notification-success' : ''}`;
         notification.innerHTML = `
