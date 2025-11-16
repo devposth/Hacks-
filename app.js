@@ -23,6 +23,8 @@ class ApunteAI {
         this.clearBtn = document.getElementById('clearBtn');
         this.exportBtn = document.getElementById('exportBtn');
         this.copyBtn = document.getElementById('copyBtn');
+        this.pasteBtn = document.getElementById('pasteBtn');
+        this.pasteText = document.getElementById('pasteText');
         this.timer = document.getElementById('timer');
         this.status = document.getElementById('status');
         this.transcriptionBox = document.getElementById('transcriptionBox');
@@ -43,7 +45,16 @@ class ApunteAI {
         this.clearBtn.addEventListener('click', () => this.clearTranscription());
         this.exportBtn.addEventListener('click', () => this.exportText());
         this.copyBtn.addEventListener('click', () => this.copyText());
+        this.pasteBtn.addEventListener('click', () => this.handlePasteText());
         
+        // Permitir Enter para pegar texto
+        this.pasteText.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                this.handlePasteText();
+            }
+        });
+
         if (!this.isMobile) {
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space' && !e.target.matches('button, input, textarea')) {
@@ -58,6 +69,39 @@ class ApunteAI {
                 this.stopRecording();
             }
         });
+    }
+
+    // 🔥 NUEVO MÉTODO - MANEJAR TEXTO PEGADO
+    handlePasteText() {
+        const text = this.pasteText.value.trim();
+        
+        if (!text) {
+            this.showError('Por favor, escribe o pega algún texto primero');
+            return;
+        }
+
+        if (text.length < 10) {
+            this.showError('El texto es muy corto. Mínimo 10 caracteres');
+            return;
+        }
+
+        // Detener grabación si está activa
+        if (this.isRecording) {
+            this.stopRecording();
+        }
+
+        // Usar el texto pegado
+        this.transcription = text;
+        this.updateTranscriptionDisplay();
+        this.hidePlaceholder();
+        
+        // Habilitar el botón de resumen
+        this.summarizeBtn.disabled = false;
+        
+        this.showSuccess('Texto cargado correctamente. Ahora puedes generar el resumen.');
+        
+        // Limpiar el textarea
+        this.pasteText.value = '';
     }
 
     handleRecordClick(e) {
@@ -228,7 +272,7 @@ class ApunteAI {
         } else {
             this.recordBtn.innerHTML = '<span class="btn-icon">🎤</span><span class="btn-text">Comenzar Clase</span>';
             this.recordBtn.classList.remove('recording');
-            this.status.textContent = 'Grabación detenida';
+            this.status.textContent = 'Listo para comenzar';
             this.status.classList.remove('recording');
         }
 
@@ -270,6 +314,7 @@ class ApunteAI {
         this.interimTranscription = '';
         this.timer.textContent = '00:00';
         this.classTopicInput.value = '';
+        this.pasteText.value = '';
         
         this.updateTranscriptionDisplay();
         this.showPlaceholder();
@@ -282,7 +327,7 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // 🔥 MÉTODO ACTUALIZADO - MODELOS GROQ 2024
+    // 🔥 MÉTODO CORREGIDO - MODELOS GROQ 2024 ACTUALES
     async generateSummaryWithGroq(text) {
         const API_KEY = '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';
         
@@ -295,12 +340,12 @@ class ApunteAI {
         if (topic) prompt += `ENFÓCATE específicamente en el tema: ${topic}\n\n`;
         prompt += `Estructura el resumen en:\n• Puntos clave (3-4 puntos principales)\n• Conceptos importantes \n• Aplicaciones prácticas\n• Recomendaciones de estudio\n\nUsa emojis relevantes y lenguaje claro para estudiantes.`;
 
-        // 🔥 MODELOS ACTUALES DE GROQ (2024)
+        // 🔥 MODELOS ACTUALES DE GROQ (DICIEMBRE 2024)
         const groqModels = [
             'llama-3.1-8b-instant',    // Modelo rápido y gratuito
             'llama-3.1-70b-versatile', // Modelo más potente
             'mixtral-8x7b-32768',      // Alternativa
-            'gemma-7b-it'              // Modelo de Google
+            'gemma2-9b-it'             // Modelo de Google actualizado
         ];
 
         for (let model of groqModels) {
