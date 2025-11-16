@@ -282,89 +282,106 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // 🔥 MÉTODO MEJORADO - SOLO IA, SIN FALLBACK LOCAL
+    // 🔥 MÉTODO PRINCIPAL - GROQ API (100% GRATIS)
+    async generateSummaryWithGroq(text) {
+        const API_KEY = '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';
+        
+        console.log('🚀 CONECTANDO CON GROQ AI...');
+        
+        const limitedText = text.length > 4000 ? text.substring(0, 4000) + "..." : text;
+        const topic = this.classTopicInput.value.trim();
+        
+        let prompt = `Como experto educativo, crea un resumen profesional EN ESPAÑOL del siguiente texto:\n\n"${limitedText}"\n\n`;
+        if (topic) prompt += `ENFÓCATE específicamente en el tema: ${topic}\n\n`;
+        prompt += `Estructura el resumen en:\n• Puntos clave (3-4 puntos principales)\n• Conceptos importantes \n• Aplicaciones prácticas\n• Recomendaciones de estudio\n\nUsa emojis relevantes y lenguaje claro para estudiantes.`;
+
+        try {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: 'llama3-8b-8192', // Modelo gratuito y rápido
+                    messages: [{ 
+                        role: 'user', 
+                        content: prompt
+                    }],
+                    max_tokens: 1500,
+                    temperature: 0.7,
+                    top_p: 0.8
+                })
+            });
+
+            console.log('📥 Status de Groq:', response.status);
+            
+            if (response.status === 200) {
+                const data = await response.json();
+                console.log('✅ ¡GROQ CONECTADO EXITOSAMENTE!');
+                
+                let summary = data.choices[0].message.content.trim();
+                
+                // Formatear el resumen
+                if (topic) {
+                    summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                } else {
+                    summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
+                }
+                
+                console.log('✨ ¡RESUMEN CON IA GROQ GENERADO!');
+                return summary;
+                
+            } else if (response.status === 429) {
+                throw new Error('Límite temporal alcanzado. Espera 1 minuto.');
+            } else {
+                const errorData = await response.json();
+                throw new Error(`Error Groq: ${errorData.error?.message || 'Desconocido'}`);
+            }
+            
+        } catch (error) {
+            console.log('❌ Error con Groq:', error.message);
+            throw new Error(`Groq: ${error.message}`);
+        }
+    }
+
+    // 🔄 MÉTODO DE RESPALDO - GEMINI
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
-        console.log('🚀 FORZANDO CONEXIÓN CON GEMINI...');
-        
-        const limitedText = text.length > 1500 ? text.substring(0, 1500) + "..." : text;
+        const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        let prompt = `Como experto educativo, crea un resumen profesional en español MAX 300 palabras:\n\n"${limitedText}"\n\n`;
-        if (topic) prompt += `ENFÓCATE en: ${topic}\n\n`;
-        prompt += `Estructura en: • 3-4 puntos clave • 2-3 conceptos importantes • 2 aplicaciones prácticas\n\nFormato conciso con emojis.`;
+        let prompt = `Resume en español: ${limitedText}`;
+        if (topic) prompt += ` Enfócate en: ${topic}`;
 
-        // 🔥 SOLO MODELOS QUE FUNCIONAN
         const modelsToTry = [
             'gemini-2.5-flash-preview-05-20',
-            'gemini-2.5-pro-preview-03-25',
-            'gemini-1.5-flash',
-            'gemini-1.5-pro'
+            'gemini-2.5-pro-preview-03-25'
         ];
 
-        for (let i = 0; i < modelsToTry.length; i++) {
-            const model = modelsToTry[i];
+        for (const model of modelsToTry) {
             try {
-                console.log(`🔧 [${i + 1}/${modelsToTry.length}] Probando: ${model}`);
-                
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
-                
-                const response = await fetch(url, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ 
-                            parts: [{ 
-                                text: prompt 
-                            }] 
-                        }],
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 800,  // 🔥 REDUCIDO para evitar límites
-                            topP: 0.8,
-                            topK: 40
-                        }
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 1000 }
                     })
                 });
 
-                console.log(`📥 Status para ${model}: ${response.status}`);
-                
                 if (response.status === 200) {
                     const data = await response.json();
-                    console.log(`✅ ¡MODELO FUNCIONAL ENCONTRADO!: ${model}`);
-                    
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-                        let summary = data.candidates[0].content.parts[0].text.trim();
-                        
-                        if (topic) {
-                            summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
-                        } else {
-                            summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
-                        }
-                        
-                        console.log('✨ ¡RESUMEN CON IA GENERADO EXITOSAMENTE!');
-                        return summary;
-                    }
-                } else if (response.status === 429) {
-                    console.log(`🔄 Límite excedido en ${model}, esperando...`);
-                    // Esperar 5 segundos antes de intentar el siguiente modelo
-                    await new Promise(resolve => setTimeout(resolve, 5000));
-                    continue;
-                } else {
-                    const errorText = await response.text();
-                    console.log(`❌ ${model} falló:`, errorText);
+                    let summary = data.candidates[0].content.parts[0].text.trim();
+                    if (topic) summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                    return summary;
                 }
-                
             } catch (error) {
-                console.log(`❌ Error con ${model}:`, error.message);
+                continue;
             }
         }
-        
-        // 🔥 ELIMINADO EL FALLBACK LOCAL - SOLO IA
-        throw new Error('No se pudo conectar con Gemini. Error 429: Límite de requests excedido. Espera unos minutos o verifica tu cuota en Google AI Studio.');
+        throw new Error('Gemini no disponible');
     }
 
     async generateSummary() {
@@ -373,7 +390,7 @@ class ApunteAI {
             return;
         }
 
-        console.log('🔄 === INICIANDO GENERACIÓN SOLO CON IA ===');
+        console.log('🔄 === INICIANDO GENERACIÓN CON GROQ AI ===');
         
         this.summarySection.style.display = 'block';
         this.summaryLoading.style.display = 'block';
@@ -381,30 +398,43 @@ class ApunteAI {
         this.summarizeBtn.disabled = true;
 
         try {
-            const summary = await this.generateSummaryWithGemini(this.transcription);
+            // 🔥 PRIMERO INTENTA CON GROQ
+            let summary = await this.generateSummaryWithGroq(this.transcription);
             this.displaySummary(summary);
-            this.showSuccess('¡Resumen con IA generado con éxito!');
+            this.showSuccess('¡Resumen con Groq AI generado! 🚀');
             
         } catch (error) {
-            console.error('❌ Error en generateSummary:', error);
+            console.error('❌ Groq falló:', error.message);
             
-            // 🔥 SOLO IA - NO HAY FALLBACK LOCAL
-            this.summaryLoading.style.display = 'none';
-            this.summaryContent.style.display = 'block';
-            this.summaryContent.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #666;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚫</div>
-                    <h3>No se pudo conectar con Gemini AI</h3>
-                    <p><strong>Error:</strong> ${error.message}</p>
-                    <p>🔧 <strong>Solución:</strong></p>
-                    <ul style="text-align: left; display: inline-block; margin: 1rem 0;">
-                        <li>Espera 5-10 minutos (límite de requests)</li>
-                        <li>Verifica tu conexión a internet</li>
-                        <li>Revisa tu cuota en <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></li>
-                    </ul>
-                </div>
-            `;
-            this.showError('Error de conexión con Gemini. Intenta nuevamente en unos minutos.');
+            // 🔄 INTENTA CON GEMINI COMO RESPALDO
+            try {
+                console.log('🔄 Intentando con Gemini como respaldo...');
+                let summary = await this.generateSummaryWithGemini(this.transcription);
+                this.displaySummary(summary);
+                this.showInfo('Resumen con Gemini (Groq no disponible)');
+                
+            } catch (geminiError) {
+                console.error('❌ Ambas APIs fallaron:', geminiError);
+                
+                // ❌ SOLO IA - NO HAY FALLBACK LOCAL
+                this.summaryLoading.style.display = 'none';
+                this.summaryContent.style.display = 'block';
+                this.summaryContent.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #666;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
+                        <h3>Servicios de IA no disponibles</h3>
+                        <p><strong>Groq:</strong> ${error.message}</p>
+                        <p><strong>Gemini:</strong> ${geminiError.message}</p>
+                        <p>🔧 <strong>Soluciones:</strong></p>
+                        <ul style="text-align: left; display: inline-block; margin: 1rem 0;">
+                            <li>Verifica tu conexión a internet</li>
+                            <li>Espera 1-2 minutos e intenta nuevamente</li>
+                            <li>Los servicios gratuitos pueden tener límites temporales</li>
+                        </ul>
+                    </div>
+                `;
+                this.showError('Servicios de IA temporalmente no disponibles');
+            }
             
         } finally {
             this.summaryLoading.style.display = 'none';
