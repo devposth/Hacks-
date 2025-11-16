@@ -18,6 +18,7 @@
                 <span class="badge">100% Gratis</span>
                 <span class="badge">Sin Instalación</span>
                 <span class="badge">Tiempo Real</span>
+                <span class="badge">Pegar Texto</span>
             </div>
         </header>
 
@@ -62,6 +63,23 @@
             </button>
         </div>
 
+        <!-- Área de pegar texto -->
+        <div class="paste-section">
+            <h3 class="section-title">📋 Pegar Texto Directamente</h3>
+            <div class="paste-container">
+                <textarea 
+                    id="pasteText" 
+                    placeholder="Pega aquí tu texto directamente si prefieres no usar el micrófono..."
+                    class="paste-textarea"
+                    rows="5"
+                ></textarea>
+                <button id="pasteBtn" class="btn btn-outline">
+                    <span class="btn-icon">📝</span>
+                    <span class="btn-text">Usar Este Texto</span>
+                </button>
+            </div>
+        </div>
+
         <!-- Área de transcripción -->
         <div class="transcription-section">
             <h3 class="section-title">
@@ -74,6 +92,7 @@
                     <ol>
                         <li>Haz clic en "Comenzar Clase" y permite el acceso al micrófono</li>
                         <li>Habla normalmente durante tu clase o estudio</li>
+                        <li>O pega texto directamente en el área superior</li>
                         <li>La transcripción aparecerá aquí en tiempo real</li>
                         <li>Al finalizar, usa "Generar Resumen IA" para obtener los puntos clave</li>
                     </ol>
@@ -113,7 +132,8 @@
             <h4>ℹ️ Información Importante</h4>
             <ul>
                 <li><strong>Transcripción:</strong> Usa Web Speech API (100% gratis)</li>
-                <li><strong>Resumen IA:</strong> Conecta con Google Gemini (gratuito)</li>
+                <li><strong>Resumen IA:</strong> Conecta con Groq AI y Gemini (gratuito)</li>
+                <li><strong>Pegar Texto:</strong> Nueva función para texto escrito</li>
                 <li><strong>Privacidad:</strong> Tu audio se procesa localmente</li>
                 <li><strong>Compatibilidad:</strong> Chrome, Edge, Safari (iOS limitado)</li>
             </ul>
