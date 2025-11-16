@@ -282,23 +282,25 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // 🔥 MÉTODO CORREGIDO - USA TUS MODELOS EXACTOS
+    // 🔥 MÉTODO MEJORADO - SOLO IA, SIN FALLBACK LOCAL
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
-        console.log('🚀 USANDO TUS MODELOS DISPONIBLES...');
+        console.log('🚀 FORZANDO CONEXIÓN CON GEMINI...');
         
-        const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
+        const limitedText = text.length > 1500 ? text.substring(0, 1500) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        let prompt = `Como experto educativo, crea un resumen profesional en español:\n\n"${limitedText}"\n\n`;
+        let prompt = `Como experto educativo, crea un resumen profesional en español MAX 300 palabras:\n\n"${limitedText}"\n\n`;
         if (topic) prompt += `ENFÓCATE en: ${topic}\n\n`;
-        prompt += `Estructura en: • Puntos clave • Conceptos importantes • Aplicaciones prácticas • Recomendaciones de estudio\n\nUsa emojis y lenguaje claro.`;
+        prompt += `Estructura en: • 3-4 puntos clave • 2-3 conceptos importantes • 2 aplicaciones prácticas\n\nFormato conciso con emojis.`;
 
-        // 🔥 TUS MODELOS EXACTOS - COPIADOS DE LA RESPUESTA
+        // 🔥 SOLO MODELOS QUE FUNCIONAN
         const modelsToTry = [
-            'gemini-2.5-flash-preview-05-20',  // Tu modelo Flash - MÁS RÁPIDO
-            'gemini-2.5-pro-preview-03-25'     // Tu modelo Pro - MÁS INTELIGENTE
+            'gemini-2.5-flash-preview-05-20',
+            'gemini-2.5-pro-preview-03-25',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro'
         ];
 
         for (let i = 0; i < modelsToTry.length; i++) {
@@ -306,7 +308,6 @@ class ApunteAI {
             try {
                 console.log(`🔧 [${i + 1}/${modelsToTry.length}] Probando: ${model}`);
                 
-                // 🔥 URL CORRECTA CON TUS MODELOS
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
                 
                 const response = await fetch(url, {
@@ -322,7 +323,7 @@ class ApunteAI {
                         }],
                         generationConfig: {
                             temperature: 0.7,
-                            maxOutputTokens: 1200,
+                            maxOutputTokens: 800,  // 🔥 REDUCIDO para evitar límites
                             topP: 0.8,
                             topK: 40
                         }
@@ -347,6 +348,11 @@ class ApunteAI {
                         console.log('✨ ¡RESUMEN CON IA GENERADO EXITOSAMENTE!');
                         return summary;
                     }
+                } else if (response.status === 429) {
+                    console.log(`🔄 Límite excedido en ${model}, esperando...`);
+                    // Esperar 5 segundos antes de intentar el siguiente modelo
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    continue;
                 } else {
                     const errorText = await response.text();
                     console.log(`❌ ${model} falló:`, errorText);
@@ -357,7 +363,8 @@ class ApunteAI {
             }
         }
         
-        throw new Error('No se pudieron usar tus modelos disponibles. Intenta con el resumen local.');
+        // 🔥 ELIMINADO EL FALLBACK LOCAL - SOLO IA
+        throw new Error('No se pudo conectar con Gemini. Error 429: Límite de requests excedido. Espera unos minutos o verifica tu cuota en Google AI Studio.');
     }
 
     async generateSummary() {
@@ -366,7 +373,7 @@ class ApunteAI {
             return;
         }
 
-        console.log('🔄 === INICIANDO GENERACIÓN CON IA ===');
+        console.log('🔄 === INICIANDO GENERACIÓN SOLO CON IA ===');
         
         this.summarySection.style.display = 'block';
         this.summaryLoading.style.display = 'block';
@@ -376,62 +383,33 @@ class ApunteAI {
         try {
             const summary = await this.generateSummaryWithGemini(this.transcription);
             this.displaySummary(summary);
-            this.showSuccess('¡Resumen generado con éxito!');
+            this.showSuccess('¡Resumen con IA generado con éxito!');
             
         } catch (error) {
             console.error('❌ Error en generateSummary:', error);
             
-            // 🔥 FALLBACK MEJORADO - RESUMEN INTELIGENTE LOCAL
-            const smartSummary = this.generateSmartSummary();
-            this.displaySummary("⚠️ **MODO LOCAL ACTIVADO** - " + smartSummary);
-            this.showInfo('Usando modo local - Para IA real, verifica la conexión');
+            // 🔥 SOLO IA - NO HAY FALLBACK LOCAL
+            this.summaryLoading.style.display = 'none';
+            this.summaryContent.style.display = 'block';
+            this.summaryContent.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #666;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚫</div>
+                    <h3>No se pudo conectar con Gemini AI</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>🔧 <strong>Solución:</strong></p>
+                    <ul style="text-align: left; display: inline-block; margin: 1rem 0;">
+                        <li>Espera 5-10 minutos (límite de requests)</li>
+                        <li>Verifica tu conexión a internet</li>
+                        <li>Revisa tu cuota en <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></li>
+                    </ul>
+                </div>
+            `;
+            this.showError('Error de conexión con Gemini. Intenta nuevamente en unos minutos.');
             
         } finally {
             this.summaryLoading.style.display = 'none';
             this.summarizeBtn.disabled = false;
         }
-    }
-
-    // 🔥 FALLBACK INTELIGENTE MEJORADO
-    generateSmartSummary() {
-        const sentences = this.transcription.split(/[.!?]+/).filter(s => s.length > 10);
-        const words = this.transcription.toLowerCase().split(/\s+/);
-        
-        // Contar palabras clave
-        const wordCount = {};
-        words.forEach(word => {
-            if (word.length > 4) {
-                wordCount[word] = (wordCount[word] || 0) + 1;
-            }
-        });
-        
-        // Obtener palabras más frecuentes
-        const topWords = Object.entries(wordCount)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([word]) => word);
-        
-        const topic = this.classTopicInput.value.trim();
-        const topicHeader = topic ? `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` : '';
-        
-        const keyPoints = sentences.slice(0, 4).map((sentence, index) => 
-            `• ${sentence.trim()}`
-        ).join('\n\n');
-
-        return `${topicHeader}📚 **RESUMEN INTELIGENTE**
-
-🔍 **Puntos Clave Identificados:**
-
-${keyPoints}
-
-🏷️ **Temas Principales:** ${topWords.join(', ')}
-
-📊 **Estadísticas:**
-• ${sentences.length} ideas principales
-• ${words.length} palabras transcritas
-• ${Math.round(words.length / sentences.length)} palabras por idea
-
-💡 **Sugerencia:** Para resúmenes con IA en tiempo real, verifica tu conexión a internet.`;
     }
 
     displaySummary(summary) {
@@ -489,7 +467,6 @@ ${keyPoints}
     }
 
     showNotification(message, type = 'info') {
-        // Eliminar notificaciones existentes
         const existingNotifications = document.querySelectorAll('.notification');
         existingNotifications.forEach(notification => notification.remove());
 
