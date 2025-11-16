@@ -329,7 +329,7 @@ class ApunteAI {
 
     // 🔥 MÉTODO CORREGIDO - MODELOS GROQ 2024 ACTUALES
     async generateSummaryWithGroq(text) {
-        const API_KEY = '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';
+        const API_KEY = '';
         
         console.log('🚀 CONECTANDO CON GROQ AI...');
         
