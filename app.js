@@ -134,7 +134,7 @@ class ApunteAI {
             if (event.error === 'not-allowed') {
                 this.showError('Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.');
             } else if (event.error === 'network') {
-                this.showError('Error de red. Verifica tu conexión a internet.');
+                this.showError('Error de network. Verifica tu conexión a internet.');
             } else if (event.error === 'audio-capture') {
                 this.showError('No se detectó micrófono. Verifica tu dispositivo de audio.');
             }
@@ -282,7 +282,7 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // 🔥 MÉTODO PRINCIPAL - GROQ API (100% GRATIS)
+    // 🔥 MÉTODO ACTUALIZADO - MODELOS GROQ 2024
     async generateSummaryWithGroq(text) {
         const API_KEY = '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';
         
@@ -295,79 +295,100 @@ class ApunteAI {
         if (topic) prompt += `ENFÓCATE específicamente en el tema: ${topic}\n\n`;
         prompt += `Estructura el resumen en:\n• Puntos clave (3-4 puntos principales)\n• Conceptos importantes \n• Aplicaciones prácticas\n• Recomendaciones de estudio\n\nUsa emojis relevantes y lenguaje claro para estudiantes.`;
 
-        try {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: 'llama3-8b-8192', // Modelo gratuito y rápido
-                    messages: [{ 
-                        role: 'user', 
-                        content: prompt
-                    }],
-                    max_tokens: 1500,
-                    temperature: 0.7,
-                    top_p: 0.8
-                })
-            });
+        // 🔥 MODELOS ACTUALES DE GROQ (2024)
+        const groqModels = [
+            'llama-3.1-8b-instant',    // Modelo rápido y gratuito
+            'llama-3.1-70b-versatile', // Modelo más potente
+            'mixtral-8x7b-32768',      // Alternativa
+            'gemma-7b-it'              // Modelo de Google
+        ];
 
-            console.log('📥 Status de Groq:', response.status);
-            
-            if (response.status === 200) {
-                const data = await response.json();
-                console.log('✅ ¡GROQ CONECTADO EXITOSAMENTE!');
+        for (let model of groqModels) {
+            try {
+                console.log(`🔧 Probando modelo: ${model}`);
                 
-                let summary = data.choices[0].message.content.trim();
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [{ 
+                            role: 'user', 
+                            content: prompt
+                        }],
+                        max_tokens: 1500,
+                        temperature: 0.7,
+                        top_p: 0.8
+                    })
+                });
+
+                console.log('📥 Status de Groq:', response.status);
                 
-                // Formatear el resumen
-                if (topic) {
-                    summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                if (response.status === 200) {
+                    const data = await response.json();
+                    console.log(`✅ ¡GROQ CONECTADO EXITOSAMENTE con ${model}!`);
+                    
+                    let summary = data.choices[0].message.content.trim();
+                    
+                    // Formatear el resumen
+                    if (topic) {
+                        summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                    } else {
+                        summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
+                    }
+                    
+                    console.log('✨ ¡RESUMEN CON IA GROQ GENERADO!');
+                    return summary;
+                    
+                } else if (response.status === 429) {
+                    console.log('🔄 Límite temporal, probando siguiente modelo...');
+                    continue;
                 } else {
-                    summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
+                    const errorData = await response.json();
+                    console.log(`❌ ${model} falló:`, errorData.error?.message);
+                    continue;
                 }
                 
-                console.log('✨ ¡RESUMEN CON IA GROQ GENERADO!');
-                return summary;
-                
-            } else if (response.status === 429) {
-                throw new Error('Límite temporal alcanzado. Espera 1 minuto.');
-            } else {
-                const errorData = await response.json();
-                throw new Error(`Error Groq: ${errorData.error?.message || 'Desconocido'}`);
+            } catch (error) {
+                console.log(`❌ Error con ${model}:`, error.message);
+                continue;
             }
-            
-        } catch (error) {
-            console.log('❌ Error con Groq:', error.message);
-            throw new Error(`Groq: ${error.message}`);
         }
+        
+        throw new Error('Todos los modelos de Groq fallaron');
     }
 
-    // 🔄 MÉTODO DE RESPALDO - GEMINI
+    // 🔄 MÉTODO DE RESPALDO - GEMINI ACTUALIZADO
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
         const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
         
-        let prompt = `Resume en español: ${limitedText}`;
-        if (topic) prompt += ` Enfócate en: ${topic}`;
+        let prompt = `Como experto educativo, resume este texto en español con puntos clave y conceptos importantes: ${limitedText}`;
+        if (topic) prompt += ` Enfócate específicamente en: ${topic}`;
 
-        const modelsToTry = [
-            'gemini-2.5-flash-preview-05-20',
-            'gemini-2.5-pro-preview-03-25'
+        // 🔥 MODELOS ACTUALES DE GEMINI
+        const geminiModels = [
+            'gemini-2.0-flash-exp',    // Modelo experimental rápido
+            'gemini-1.5-flash',        // Flash actual
+            'gemini-1.5-pro'           // Pro actual
         ];
 
-        for (const model of modelsToTry) {
+        for (const model of geminiModels) {
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { maxOutputTokens: 1000 }
+                        generationConfig: { 
+                            maxOutputTokens: 1000,
+                            temperature: 0.7
+                        }
                     })
                 });
 
@@ -376,8 +397,12 @@ class ApunteAI {
                     let summary = data.candidates[0].content.parts[0].text.trim();
                     if (topic) summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
                     return summary;
+                } else if (response.status === 429) {
+                    console.log('📊 Límite de Gemini alcanzado');
+                    continue;
                 }
             } catch (error) {
+                console.log(`❌ Gemini ${model} error:`, error.message);
                 continue;
             }
         }
@@ -390,7 +415,7 @@ class ApunteAI {
             return;
         }
 
-        console.log('🔄 === INICIANDO GENERACIÓN CON GROQ AI ===');
+        console.log('🔄 === INICIANDO GENERACIÓN CON IA ===');
         
         this.summarySection.style.display = 'block';
         this.summaryLoading.style.display = 'block';
@@ -416,30 +441,28 @@ class ApunteAI {
             } catch (geminiError) {
                 console.error('❌ Ambas APIs fallaron:', geminiError);
                 
-                // ❌ SOLO IA - NO HAY FALLBACK LOCAL
-                this.summaryLoading.style.display = 'none';
-                this.summaryContent.style.display = 'block';
-                this.summaryContent.innerHTML = `
-                    <div style="text-align: center; padding: 2rem; color: #666;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
-                        <h3>Servicios de IA no disponibles</h3>
-                        <p><strong>Groq:</strong> ${error.message}</p>
-                        <p><strong>Gemini:</strong> ${geminiError.message}</p>
-                        <p>🔧 <strong>Soluciones:</strong></p>
-                        <ul style="text-align: left; display: inline-block; margin: 1rem 0;">
-                            <li>Verifica tu conexión a internet</li>
-                            <li>Espera 1-2 minutos e intenta nuevamente</li>
-                            <li>Los servicios gratuitos pueden tener límites temporales</li>
-                        </ul>
-                    </div>
-                `;
-                this.showError('Servicios de IA temporalmente no disponibles');
+                // 🎯 FALLBACK INTELIGENTE PARA HACKATHON
+                const demoSummary = this.generateDemoSummary(this.transcription);
+                this.displaySummary(demoSummary);
+                this.showInfo('Modo demo activado - Para IA real revisa la configuración');
             }
             
         } finally {
             this.summaryLoading.style.display = 'none';
             this.summarizeBtn.disabled = false;
         }
+    }
+
+    // 🎯 FALLBACK PARA DEMO EN HACKATHON
+    generateDemoSummary(text, topic) {
+        const sentences = text.split(/[.!?]+/).filter(s => s.length > 20);
+        const keyPoints = sentences.slice(0, 4).map((sentence, index) => 
+            `${index + 1}. ${sentence.trim()}`
+        ).join('\n\n');
+
+        const topicHeader = topic ? `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` : '📚 **RESUMEN DE CLASE**\n\n';
+
+        return `${topicHeader}🔍 **Puntos Clave Identificados:**\n\n${keyPoints}\n\n💡 *Para resúmenes con IA en tiempo real, verifica la configuración de las APIs*`;
     }
 
     displaySummary(summary) {
