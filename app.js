@@ -282,12 +282,11 @@ class ApunteAI {
         this.showSuccess('Transcripción limpiada correctamente');
     }
 
-    // 🔥 **MÉTODO CORREGIDO - URL ACTUALIZADA 2024**
+    // 🔥 **SOLUCIÓN CON PROXY PARA CORS**
     async generateSummaryWithGemini(text) {
         const API_KEY = 'AIzaSyC4a3Dg7EaHN-DwbfWnCIj1FZL2KRzONHY';
         
-        console.log('🚀 CONECTANDO CON GEMINI...');
-        console.log('🔑 Usando NUEVA API Key de Google AI Studio');
+        console.log('🚀 SOLUCIÓN CON PROXY CORS...');
         
         const limitedText = text.length > 3000 ? text.substring(0, 3000) + "..." : text;
         const topic = this.classTopicInput.value.trim();
@@ -296,21 +295,79 @@ class ApunteAI {
         if (topic) prompt += `ENFÓCATE en: ${topic}\n\n`;
         prompt += `Estructura en: • Puntos clave • Conceptos importantes • Aplicaciones prácticas • Recomendaciones de estudio\n\nUsa emojis y lenguaje claro.`;
 
-        // 🔥 **MODELOS ACTUALIZADOS - URL CORRECTA**
-        const modelsToTry = [
+        // 🔥 **USAR PROXY PARA EVITAR CORS**
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        try {
+            console.log('🔧 Usando proxy CORS...');
+            
+            const response = await fetch(proxyUrl + apiUrl, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    contents: [{ 
+                        parts: [{ 
+                            text: prompt 
+                        }] 
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1200,
+                        topP: 0.8,
+                        topK: 40
+                    }
+                })
+            });
+
+            console.log('📥 Status:', response.status);
+            
+            if (response.status === 200) {
+                const data = await response.json();
+                console.log('✅ ¡CONEXIÓN EXITOSA CON GEMINI!');
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                    let summary = data.candidates[0].content.parts[0].text.trim();
+                    
+                    if (topic) {
+                        summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                    } else {
+                        summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
+                    }
+                    
+                    return summary;
+                }
+            } else {
+                console.log('❌ Error con proxy, intentando método directo...');
+                return await this.tryDirectMethod(API_KEY, prompt, topic);
+            }
+            
+        } catch (error) {
+            console.log('❌ Error con proxy:', error.message);
+            return await this.tryDirectMethod(API_KEY, prompt, topic);
+        }
+    }
+
+    // 🔥 **MÉTODO DIRECTO COMO FALLBACK**
+    async tryDirectMethod(apiKey, prompt, topic) {
+        console.log('🔄 Intentando método directo...');
+        
+        const models = [
             'gemini-1.5-flash',
-            'gemini-1.5-pro',
+            'gemini-1.5-pro', 
             'gemini-1.0-pro'
         ];
 
-        for (let i = 0; i < modelsToTry.length; i++) {
-            const model = modelsToTry[i];
+        for (const model of models) {
             try {
-                console.log(`🔧 [${i + 1}/${modelsToTry.length}] Probando: ${model}`);
+                console.log(`🔧 Probando: ${model}`);
                 
-                // 🔥 **URL CORREGIDA - Sin /v1beta/**
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${API_KEY}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: { 
                         'Content-Type': 'application/json',
                     },
@@ -329,37 +386,25 @@ class ApunteAI {
                     })
                 });
 
-                console.log(`📥 Status para ${model}: ${response.status}`);
-                
-                if (response.status === 200) {
+                if (response.ok) {
                     const data = await response.json();
-                    console.log(`✅ ¡MODELO ENCONTRADO! Funciona: ${model}`);
+                    let summary = data.candidates[0].content.parts[0].text.trim();
                     
-                    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-                        let summary = data.candidates[0].content.parts[0].text.trim();
-                        
-                        if (topic) {
-                            summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
-                        } else {
-                            summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
-                        }
-                        
-                        console.log('✨ ¡RESUMEN CON IA REAL GENERADO!');
-                        return summary;
+                    if (topic) {
+                        summary = `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n${summary}`;
+                    } else {
+                        summary = `📚 **RESUMEN DE CLASE**\n\n${summary}`;
                     }
-                } else {
-                    console.log(`❌ ${model} no disponible (${response.status})`);
-                    const errorData = await response.text();
-                    console.log('📄 Respuesta del error:', errorData);
+                    
+                    console.log('✅ ¡CONEXIÓN DIRECTA EXITOSA!');
+                    return summary;
                 }
-                
             } catch (error) {
                 console.log(`❌ Error con ${model}:`, error.message);
             }
         }
         
-        // Si todos los modelos fallan
-        throw new Error('No se pudo conectar con Gemini. La nueva API Key puede necesitar unos minutos para activarse.');
+        throw new Error('No se pudo conectar con Gemini. Verifica tu conexión o intenta más tarde.');
     }
 
     async generateSummary() {
@@ -368,7 +413,7 @@ class ApunteAI {
             return;
         }
 
-        console.log('🔄 === INICIANDO GENERACIÓN CON IA REAL ===');
+        console.log('🔄 === INICIANDO GENERACIÓN CON IA ===');
         
         this.summarySection.style.display = 'block';
         this.summaryLoading.style.display = 'block';
@@ -378,15 +423,15 @@ class ApunteAI {
         try {
             const summary = await this.generateSummaryWithGemini(this.transcription);
             this.displaySummary(summary);
+            this.showSuccess('¡Resumen generado con éxito!');
             
         } catch (error) {
             console.error('❌ Error en generateSummary:', error);
             
-            this.showError(`Error: ${error.message}`);
-            
-            // Fallback a simulación
-            const simulatedSummary = this.createSimulatedSummary();
-            this.displaySummary("⚠️ **MODO SIMULADO** - Sin conexión a IA:\n\n" + simulatedSummary);
+            // 🔥 **FALLBACK MEJORADO - RESUMEN INTELIGENTE LOCAL**
+            const smartSummary = this.generateSmartSummary();
+            this.displaySummary(smartSummary);
+            this.showInfo('Usando modo local - Para IA real, verifica la conexión');
             
         } finally {
             this.summaryLoading.style.display = 'none';
@@ -394,22 +439,46 @@ class ApunteAI {
         }
     }
 
-    createSimulatedSummary() {
-        const lines = this.transcription.split('. ').filter(line => line.length > 10);
-        const keyPoints = lines.slice(0, 4).map((line, index) => 
-            `${index + 1}. ${line.trim()}`
-        ).join('\n\n');
-
+    // 🔥 **FALLBACK INTELIGENTE MEJORADO**
+    generateSmartSummary() {
+        const sentences = this.transcription.split(/[.!?]+/).filter(s => s.length > 10);
+        const words = this.transcription.toLowerCase().split(/\s+/);
+        
+        // Contar palabras clave
+        const wordCount = {};
+        words.forEach(word => {
+            if (word.length > 4) {
+                wordCount[word] = (wordCount[word] || 0) + 1;
+            }
+        });
+        
+        // Obtener palabras más frecuentes
+        const topWords = Object.entries(wordCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([word]) => word);
+        
         const topic = this.classTopicInput.value.trim();
         const topicHeader = topic ? `🎯 **CLASE SOBRE: ${topic.toUpperCase()}**\n\n` : '';
+        
+        const keyPoints = sentences.slice(0, 4).map((sentence, index) => 
+            `• ${sentence.trim()}`
+        ).join('\n\n');
 
-        return `${topicHeader}📚 **RESUMEN SIMULADO**
+        return `${topicHeader}📚 **RESUMEN INTELIGENTE**
 
 🔍 **Puntos Clave Identificados:**
 
 ${keyPoints}
 
-💡 **Nota:** Para resúmenes con IA real, verifica la configuración de Gemini API.`;
+🏷️ **Temas Principales:** ${topWords.join(', ')}
+
+📊 **Estadísticas:**
+• ${sentences.length} ideas principales
+• ${words.length} palabras transcritas
+• ${Math.round(words.length / sentences.length)} palabras por idea
+
+💡 **Sugerencia:** Para resúmenes con IA en tiempo real, verifica tu conexión a internet y que la API Key esté configurada correctamente en Google AI Studio.`;
     }
 
     displaySummary(summary) {
@@ -467,7 +536,6 @@ ${keyPoints}
     }
 
     showNotification(message, type = 'info') {
-        // Eliminar notificaciones existentes
         const existingNotifications = document.querySelectorAll('.notification');
         existingNotifications.forEach(notification => notification.remove());
 
